@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DB JInS</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        header {
+            background: white;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            color: #fff;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+        }
+
+        header img {
+            height: 30px;
+            margin-right: 20px;
+        }
+      header span {
+        color: black;
+      }
+
+        .console {
+            margin: 60px 20px 20px 20px; /* ヘッダーの高さを考慮してマージンを設定 */
+            padding: 20px;
+            height: calc(100vh - 60px - 40px); /* ヘッダーとコンソールの入力欄の高さを引く */
+            background: #000;
+            border: 1px solid #333;
+            color: #0f0;
+            font-family: 'Courier New', Courier, monospace;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .console-input {
+            outline: none;
+            border: none;
+            background: transparent;
+            color: #0f0;
+            font-family: 'Courier New', Courier, monospace;
+            width: 100%;
+            position: absolute;
+            bottom: 0;
+        }
+
+        .console-output {
+            margin-bottom: 30px; /* カーソルと入力欄のスペースを確保 */
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 20px;
+            background: #0f0;
+            animation: blink 1s step-start 0s infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        .login-screen {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            font-size: 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 999;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <img src="img/logo.png" alt="Logo">
+        <span>JInS Data Base [00Al]</span>
+    </header>
+
+    <div class="login-screen" id="loginScreen">
+        <div>
+            <p>ログインしてください</p>
+            <input type="text" id="username" placeholder="ユーザー名">
+            <input type="password" id="password" placeholder="パスワード">
+            <button onclick="login()">ログイン</button>
+        </div>
+    </div>
+
+    <div class="console" id="console" style="display: none;">
+        <div class="console-output" id="consoleOutput"></div>
+        <input type="text" class="console-input" id="consoleInput" placeholder="コマンドを入力">
+        <span class="cursor"></span>
+    </div>
+
+    <script>
+        // 疑似データベース
+        const database = {
+            "user info": `
+                User ID: 12345
+                Name: Taro Yamada
+                Age: 30
+                Email: taro.yamada@example.com
+                Registration Date: January 15, 2021
+                Last Login: July 10, 2024
+            `,
+            "user info 12345": `
+                User ID: 12345
+                Name: Taro Yamada
+                Age: 30
+                Email: taro.yamada@example.com
+                Registration Date: January 15, 2021
+                Last Login: July 10, 2024
+            `,
+            "product info": `
+                Product ID: 001
+                Name: Smartphone
+                Price: ¥50,000
+                Stock: 150 units
+                Description: Latest smartphone with smooth operation.
+                
+                Product ID: 002
+                Name: Laptop
+                Price: ¥100,000
+                Stock: 80 units
+                Description: High-performance laptop with long battery life.
+                
+                Product ID: 003
+                Name: Headphones
+                Price: ¥10,000
+                Stock: 200 units
+                Description: Noise-cancelling headphones with comfortable fit.
+            `,
+            "product info 001": `
+                Product ID: 001
+                Name: Smartphone
+                Price: ¥50,000
+                Stock: 150 units
+                Description: Latest smartphone with smooth operation.
+            `,
+            "product info 002": `
+                Product ID: 002
+                Name: Laptop
+                Price: ¥100,000
+                Stock: 80 units
+                Description: High-performance laptop with long battery life.
+            `,
+            "product info 003": `
+                Product ID: 003
+                Name: Headphones
+                Price: ¥10,000
+                Stock: 200 units
+                Description: Noise-cancelling headphones with comfortable fit.
+            `,
+            "order history": `
+                Order Number: 20240001
+                Product: Smartphone
+                Quantity: 2 units
+                Order Date: July 5, 2024
+                Delivery Status: In Transit
+                
+                Order Number: 20240002
+                Product: Laptop
+                Quantity: 1 unit
+                Order Date: July 6, 2024
+                Delivery Status: Delivered
+                
+                Order Number: 20240003
+                Product: Headphones
+                Quantity: 5 units
+                Order Date: July 7, 2024
+                Delivery Status: In Transit
+            `,
+            "order history 20240001": `
+                Order Number: 20240001
+                Product: Smartphone
+                Quantity: 2 units
+                Order Date: July 5, 2024
+                Delivery Status: In Transit
+            `,
+            "order history 20240002": `
+                Order Number: 20240002
+                Product: Laptop
+                Quantity: 1 unit
+                Order Date: July 6, 2024
+                Delivery Status: Delivered
+            `,
+            "order history 20240003": `
+                Order Number: 20240003
+                Product: Headphones
+                Quantity: 5 units
+                Order Date: July 7, 2024
+                Delivery Status: In Transit
+            `,
+            "list users": `
+                12345 - Taro Yamada
+                67890 - Hanako Suzuki
+                11223 - Jiro Tanaka
+            `,
+            "list products": `
+                001 - Smartphone
+                002 - Laptop
+                003 - Headphones
+            `,
+            "list orders": `
+                20240001 - Smartphone, 2 units
+                20240002 - Laptop, 1 unit
+                20240003 - Headphones, 5 units
+            `,
+            "help": `
+                コマンド一覧:
+                - user info: ユーザー情報を表示します
+                - user info [ID]: 指定したユーザーIDの詳細情報を表示します
+                - product info: 商品情報を表示します
+                - product info [ID]: 指定した商品IDの詳細情報を表示します
+                - order history: 注文履歴を表示します
+                - order history [番号]: 指定した注文番号の詳細情報を表示します
+                - list users: 全ユーザーのリストを表示します
+                - list products: 全商品のリストを表示します
+                - list orders: 全注文のリストを表示します
+                - help: このヘルプメッセージを表示します
+            `
+        };
+
+        // 起動画面の表示
+        window.onload = function() {
+            setTimeout(function() {
+                document.getElementById('loginScreen').style.display = 'flex';
+            }, Math.random() * 3000 + 2000); // 2秒〜5秒のランダムな遅延
+        };
+
+        function login() {
+            // ログイン処理の例（ここでは単にログイン画面を隠すだけ）
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('console').style.display = 'block';
+
+            // コンソールにフォーカスを当てる
+            document.getElementById('consoleInput').focus();
+        }
+
+        // コンソールのコマンド処理
+        document.getElementById('consoleInput').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                const input = this.value.trim();
+                this.value = '';
+
+                const output = document.createElement('div');
+                output.textContent = '> ' + input;
+                document.getElementById('consoleOutput').appendChild(output);
+
+                                // 疑似データベース検索
+                const response = database[input] || 'データが見つかりませんでした。もう一度入力してください。';
+                const responseOutput = document.createElement('div');
+                responseOutput.textContent = response;
+                document.getElementById('consoleOutput').appendChild(responseOutput);
+
+                // コンソールのスクロールを最下部に移動
+                document.getElementById('console').scrollTop = document.getElementById('console').scrollHeight;
+            }
+        });
+    </script>
+</body>
+</html>
+
